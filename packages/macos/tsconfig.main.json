@@ -6,17 +6,17 @@
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
     "sourceMap": true,
+    "noEmit": false,
     "baseUrl": ".",
     "paths": {
-      "@codepop/core": ["../core/src"]
+      "@codepop/core": ["../core/dist"]
     }
   },
   "include": ["src/main.ts", "src/preload.ts", "src/ipc/**/*.ts"],

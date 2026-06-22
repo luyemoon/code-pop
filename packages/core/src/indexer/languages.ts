@@ -28,7 +28,7 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
     name: 'Go',
     extensions: ['.go'],
     treeSitterLanguage: 'go',
-    commentPattern: /\/\//|\/\*/,
+    commentPattern: /\/\/|\/\*/,
   },
   {
     name: 'Java',

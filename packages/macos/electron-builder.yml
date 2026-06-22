@@ -1,6 +1,5 @@
 appId: dev.codepop.app
 productName: CodePop
-copyright: Copyright © 2024 CodePop
 directories:
   output: release
   buildResources: build
@@ -9,13 +8,9 @@ mac:
   icon: build/icon.icns
   target:
     - dmg
-    - zip
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.plist
-  entitlementsInherit: build/entitlements.plist
-  provideEntitlements: true
-  requirements: build/requirements.txt
 dmg:
   contents:
     - x: 130
@@ -27,22 +22,14 @@ dmg:
   window:
     width: 540
     height: 450
-  artifactName: ${productName}-${version}-${arch}.dmg
 files:
   - dist/**/*
-  - node_modules/**/*
   - package.json
 extraMetadata:
   main: dist/main.js
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
-afterSign: build/notarize.js
-codeSignIdentity: "-"
-developmentAssets: development
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
-publish:
-  provider: github
-  owner: codepop
-  repo: codepop
+npmRebuild: false

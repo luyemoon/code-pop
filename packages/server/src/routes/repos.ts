@@ -86,6 +86,33 @@ const validateUpdateRepoRequest = (body: unknown): { valid: boolean; error?: str
 };
 
 export const getReposRouter = () => {
+  /**
+ * @swagger
+ * /api/repos:
+ *   post:
+ *     summary: 创建仓库
+ *     description: 添加一个新的代码仓库到索引系统
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateRepoRequest'
+ *     responses:
+ *       201:
+ *         description: 仓库创建成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: 请求参数无效
+ *       409:
+ *         description: 仓库已存在
+ */
   router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const validation = validateCreateRepoRequest(req.body);
@@ -123,6 +150,25 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos:
+ *   get:
+ *     summary: 获取所有仓库
+ *     description: 返回系统中所有已索引的代码仓库列表
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: 仓库列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const repos = await db.repo.getAll();
@@ -140,6 +186,34 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}:
+ *   get:
+ *     summary: 获取指定仓库
+ *     description: 根据仓库ID获取仓库详细信息
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       200:
+ *         description: 仓库详细信息
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -166,6 +240,42 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}:
+ *   patch:
+ *     summary: 更新仓库
+ *     description: 更新指定仓库的信息
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateRepoRequest'
+ *     responses:
+ *       200:
+ *         description: 仓库更新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: 请求参数无效
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -203,6 +313,34 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}:
+ *   delete:
+ *     summary: 删除仓库
+ *     description: 删除指定仓库及其所有关联数据
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       200:
+ *         description: 仓库删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -236,6 +374,34 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}/index:
+ *   post:
+ *     summary: 启动仓库索引
+ *     description: 对指定仓库启动代码索引过程，生成嵌入向量
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       202:
+ *         description: 索引任务已启动
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.post('/:id/index', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -296,6 +462,34 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}/files:
+ *   get:
+ *     summary: 获取仓库文件列表
+ *     description: 返回指定仓库的所有文件
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       200:
+ *         description: 文件列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/:id/files', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -323,6 +517,34 @@ export const getReposRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/repos/{id}/symbols:
+ *   get:
+ *     summary: 获取仓库符号列表
+ *     description: 返回指定仓库的所有代码符号（函数、类、变量等）
+ *     tags: [Repositories]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       200:
+ *         description: 符号列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 仓库不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/:id/symbols', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;

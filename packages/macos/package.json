@@ -13,7 +13,6 @@
     "build:mac": "npm run build && electron-builder --mac",
     "pack": "npm run build:renderer && electron-builder --dir",
     "dist": "npm run build && electron-builder",
-    "postinstall": "electron-builder install-app-deps",
     "test": "jest"
   },
   "keywords": [
@@ -40,13 +39,5 @@
     "electron-builder": "^24.9.1",
     "typescript": "^5.3.3",
     "vite": "^5.1.0"
-  },
-  "build": {
-    "appId": "dev.codepop.app",
-    "productName": "CodePop",
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "target": ["dmg"]
-    }
   }
 }

@@ -11,13 +11,45 @@ import {
   Zap,
   ArrowRight,
 } from 'lucide-react';
-import { useRepos } from '../../hooks/useRepos';
-import { useSearch } from '../../hooks/useSearch';
+import { useRepos } from '../hooks/useRepos';
+import { useSearch } from '../hooks/useSearch';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { useStore } from '../store';
 
 export const Dashboard = () => {
   const { repos, isLoading: reposLoading } = useRepos();
   const { recentSearches } = useSearch();
+  const { wsUrl, setWsStatus, addRealTimeUpdate, updateRepo } = useStore();
   const [animated, setAnimated] = useState(false);
+
+  // WebSocket connection for real-time updates
+  const { status, lastMessage, send } = useWebSocket(wsUrl, {
+    onMessage: (data: unknown) => {
+      const msg = data as { type?: string; repoId?: string; [key: string]: unknown };
+      if (msg.type === 'repo_update' && msg.repoId) {
+        addRealTimeUpdate(`repo_${msg.repoId}`, msg);
+        // Update repo in store if we have the data
+        if (msg.repoId && msg.data) {
+          updateRepo(msg.repoId as string, msg.data as Partial<import('../types').Repo>);
+        }
+      }
+    },
+    onConnect: () => setWsStatus('connected'),
+    onDisconnect: () => setWsStatus('disconnected'),
+    reconnectOnMount: true,
+  });
+
+  // Sync WebSocket status to store
+  useEffect(() => {
+    setWsStatus(status);
+  }, [status, setWsStatus]);
+
+  // Request initial data on connect
+  useEffect(() => {
+    if (status === 'connected') {
+      send({ type: 'subscribe', channels: ['repos', 'indexing'] });
+    }
+  }, [status, send]);
 
   useEffect(() => {
     setAnimated(true);

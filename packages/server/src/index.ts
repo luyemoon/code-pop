@@ -2,6 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
 import { DatabaseAdapter, initAdapters, AdapterFactory, DatabaseConfig } from '@codepop/core';
 import { CONFIG, logger } from './config';
 import { applyCors } from './middleware/cors';
@@ -12,12 +13,17 @@ import { getSearchRouter, setSearchDependencies } from './routes/search';
 import { getEmbeddingsRouter, setEmbeddingsDependencies } from './routes/embeddings';
 import { IndexerService, IndexProgress } from './services/indexer';
 import { getEmbeddingService } from './services/embedding';
+import { openapiSpecification } from './docs/openapi';
+import { MCPServer } from './mcp/server';
+import { JSONRPCRequest } from './mcp/protocol';
 
 dotenv.config();
 
 let db: DatabaseAdapter;
 let server: http.Server;
 let wss: WebSocketServer | null = null;
+let mcpServer: MCPServer | null = null;
+let codeSearchService: CodeSearchService | null = null;
 
 const clients = new Set<WebSocket>();
 
@@ -82,6 +88,19 @@ const createApp = (): Express => {
 
   app.use('/api/health', getHealthRouter(() => db));
 
+  // Swagger API 文档
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpecification, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'CodePop API 文档',
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  }));
+
+  app.get('/api-docs/openapi.json', (req: Request, res: Response) => {
+    res.json(openapiSpecification);
+  });
+
   app.use('/api/repos', authMiddleware, getReposRouter());
   app.use('/api/search', authMiddleware, getSearchRouter());
   app.use('/api/embeddings', authMiddleware, getEmbeddingsRouter());
@@ -92,6 +111,7 @@ const createApp = (): Express => {
       data: {
         name: 'CodePop API',
         version: '0.1.0',
+        documentation: '/api-docs',
         endpoints: {
           health: 'GET /api/health',
           repos: {
@@ -196,6 +216,69 @@ const notifyClients = (message: object): void => {
   });
 };
 
+const initMCPWebSocket = (server: http.Server, mcpServer: MCPServer): void => {
+  const mcpWss = new WebSocketServer({ noServer: true });
+  const protocol = mcpServer.getMCPProtocol();
+
+  server.on('upgrade', (request, socket, head) => {
+    const url = new URL(request.url || '', `http://${request.headers.host}`);
+    if (url.pathname === mcpServer.wsPath) {
+      mcpWss.handleUpgrade(request, socket, head, (ws) => {
+        mcpWss.emit('connection', ws, request);
+      });
+    }
+  });
+
+  mcpWss.on('connection', (ws: WebSocket) => {
+    logger.info('MCP WebSocket client connected');
+
+    ws.on('message', async (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        const request = protocol.parseMessage(message);
+
+        if (request) {
+          const response = await protocol.handleRequest(request as JSONRPCRequest);
+          if (response.id !== null || !('id' in request)) {
+            ws.send(JSON.stringify(response));
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        logger.warn('MCP WebSocket message error:', message);
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32700, message: 'Parse error' },
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      logger.info('MCP WebSocket client disconnected');
+    });
+
+    ws.on('error', (error) => {
+      logger.error('MCP WebSocket error:', error);
+    });
+
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0',
+      id: null,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: protocol.getCapabilities(),
+        serverInfo: {
+          name: 'codepop-mcp-server',
+          version: '1.0.0',
+        },
+      },
+    }));
+  });
+
+  logger.info('MCP WebSocket endpoint initialized');
+};
+
 const startServer = async (): Promise<void> => {
   validateEnv();
 
@@ -212,9 +295,28 @@ const startServer = async (): Promise<void> => {
 
     wss = initWebSocket(server);
 
+    // Initialize MCP server
+    codeSearchService = new CodeSearchService(db);
+    mcpServer = new MCPServer({
+      basePath: '/mcp',
+      enableHttp: false,
+      enableWebSocket: false,
+      enableStdio: false,
+    });
+    await mcpServer.initialize(codeSearchService);
+    mcpServer.setLogger((msg) => logger.debug(msg));
+
+    // Mount MCP router at /mcp
+    app.use('/mcp', mcpServer.router);
+
+    // Add MCP WebSocket endpoint
+    initMCPWebSocket(server, mcpServer);
+
     server.listen(CONFIG.port, CONFIG.host, () => {
       logger.info(`CodePop server running on http://${CONFIG.host}:${CONFIG.port}`);
       logger.info(`WebSocket server running on ws://${CONFIG.host}:${CONFIG.port}/ws`);
+      logger.info(`MCP server running on http://${CONFIG.host}:${CONFIG.port}/mcp`);
+      logger.info(`MCP WebSocket running on ws://${CONFIG.host}:${CONFIG.port}/mcp`);
       logger.info(`Database type: ${CONFIG.databaseType}`);
       logger.info(`API key required: ${CONFIG.apiKeyRequired}`);
     });
@@ -249,6 +351,15 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     });
   }
 
+  if (codeSearchService) {
+    try {
+      await codeSearchService.close();
+      logger.info('CodeSearchService closed');
+    } catch (error) {
+      logger.error('Error closing CodeSearchService:', error);
+    }
+  }
+
   if (db) {
     try {
       await db.disconnect();
@@ -275,4 +386,4 @@ process.on('unhandledRejection', (reason, promise) => {
 
 startServer();
 
-export { app, db, server, wss };
+export { app, db, server, wss, mcpServer };

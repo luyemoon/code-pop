@@ -16,6 +16,7 @@ export interface MCPServerConfig {
   enableHttp?: boolean;
   enableWebSocket?: boolean;
   databaseConfig?: DatabaseConfig;
+  basePath?: string;
 }
 
 export class MCPServer {
@@ -27,6 +28,7 @@ export class MCPServer {
   private service: CodeSearchService | null = null;
   private config: MCPServerConfig;
   private logger: (message: string) => void;
+  private basePath: string;
 
   constructor(config: MCPServerConfig = {}) {
     this.config = {
@@ -36,8 +38,10 @@ export class MCPServer {
       enableStdio: config.enableStdio ?? true,
       enableHttp: config.enableHttp ?? true,
       enableWebSocket: config.enableWebSocket ?? true,
+      basePath: config.basePath || '',
     };
 
+    this.basePath = this.config.basePath;
     this.logger = console.log;
     this.protocol = new MCPProtocol();
     this.app = express();
@@ -88,16 +92,19 @@ export class MCPServer {
 
     this.app.use(express.json({ limit: '10mb' }));
 
+    const mcpPath = this.basePath ? `${this.basePath}/mcp` : '/mcp';
+    const healthPath = this.basePath ? `${this.basePath}/health` : '/health';
+
     // Health check
-    this.app.get('/health', (_req: Request, res: Response) => {
+    this.app.get(healthPath, (_req: Request, res: Response) => {
       res.json({ status: 'ok', service: 'mcp-server' });
     });
 
     // MCP endpoint
-    this.app.post('/mcp', this.handleHttpRequest.bind(this));
+    this.app.post(mcpPath, this.handleHttpRequest.bind(this));
 
     // GET for tool listing (optional, following spec)
-    this.app.get('/mcp', this.handleHttpRequest.bind(this));
+    this.app.get(mcpPath, this.handleHttpRequest.bind(this));
 
     // Error handler
     this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
@@ -111,6 +118,22 @@ export class MCPServer {
         },
       });
     });
+  }
+
+  get router(): express.Application {
+    return this.app;
+  }
+
+  get mcpPath(): string {
+    return this.basePath ? `${this.basePath}/mcp` : '/mcp';
+  }
+
+  get wsPath(): string {
+    return this.basePath ? `${this.basePath}/mcp` : '/mcp';
+  }
+
+  getMCPProtocol(): MCPProtocol {
+    return this.protocol;
   }
 
   private async handleHttpRequest(req: Request, res: Response): Promise<void> {
@@ -223,7 +246,7 @@ export class MCPServer {
     }
 
     if (this.config.enableWebSocket && this.server) {
-      this.wss = new WebSocketServer({ server: this.server, path: '/mcp' });
+      this.wss = new WebSocketServer({ server: this.server, path: this.wsPath });
 
       this.wss.on('connection', (ws: WebSocket) => {
         this.logger('[MCP] WebSocket client connected');

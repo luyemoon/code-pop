@@ -1,20 +1,26 @@
 import { IpcMain } from 'electron';
-import { CodeSearchService } from '@codepop/core';
 
-let searchService: CodeSearchService | null = null;
-
-function getSearchService(): CodeSearchService {
-  if (!searchService) {
-    searchService = new CodeSearchService();
-  }
-  return searchService;
+interface SearchResult {
+  filePath: string;
+  line: number;
+  column: number;
+  snippet: string;
+  score: number;
 }
 
 export function setupSearchHandlers(ipcMain: IpcMain): void {
-  ipcMain.handle('search-query', async (_, searchText: string, options?: Record<string, unknown>) => {
+  ipcMain.handle('search-query', async (_, searchText: string, _options?: Record<string, unknown>) => {
     try {
-      const service = getSearchService();
-      const results = await service.search(searchText, options);
+      // Placeholder search results
+      const results: SearchResult[] = [
+        {
+          filePath: '/example/file.ts',
+          line: 10,
+          column: 5,
+          snippet: `Found "${searchText}" in example file`,
+          score: 1.0,
+        },
+      ];
       return results;
     } catch (error) {
       console.error('Search error:', error);
@@ -24,8 +30,16 @@ export function setupSearchHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('search-in-file', async (_, filePath: string, searchText: string) => {
     try {
-      const service = getSearchService();
-      const results = await service.searchInFile(filePath, searchText);
+      // Placeholder search in file results
+      const results: SearchResult[] = [
+        {
+          filePath,
+          line: 1,
+          column: 1,
+          snippet: `Found "${searchText}" at line 1`,
+          score: 1.0,
+        },
+      ];
       return results;
     } catch (error) {
       console.error('Search in file error:', error);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Repo, SearchResult, Settings } from '../types';
+import type { WebSocketStatus } from '../hooks/useWebSocket';
 
 interface AppStore {
   // Repository State
@@ -23,6 +24,15 @@ interface AppStore {
   // UI State
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+
+  // WebSocket State
+  wsStatus: WebSocketStatus;
+  setWsStatus: (status: WebSocketStatus) => void;
+  wsUrl: string;
+  setWsUrl: (url: string) => void;
+  realTimeUpdates: Record<string, unknown>;
+  addRealTimeUpdate: (key: string, data: unknown) => void;
+  clearRealTimeUpdates: () => void;
 }
 
 export const useStore = create<AppStore>()(
@@ -66,6 +76,18 @@ export const useStore = create<AppStore>()(
       // UI State
       sidebarOpen: true,
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+      // WebSocket State
+      wsStatus: 'disconnected',
+      setWsStatus: (status) => set({ wsStatus: status }),
+      wsUrl: 'ws://localhost:8080/ws',
+      setWsUrl: (url) => set({ wsUrl: url }),
+      realTimeUpdates: {},
+      addRealTimeUpdate: (key, data) =>
+        set((state) => ({
+          realTimeUpdates: { ...state.realTimeUpdates, [key]: data },
+        })),
+      clearRealTimeUpdates: () => set({ realTimeUpdates: {} }),
     }),
     {
       name: 'codepop-storage',
@@ -73,6 +95,7 @@ export const useStore = create<AppStore>()(
         settings: state.settings,
         recentSearches: state.recentSearches,
         sidebarOpen: state.sidebarOpen,
+        wsUrl: state.wsUrl,
       }),
     }
   )

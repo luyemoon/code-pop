@@ -13,6 +13,32 @@ export const setEmbeddingsDependencies = (database: DatabaseAdapter): void => {
 };
 
 export const getEmbeddingsRouter = () => {
+  /**
+ * @swagger
+ * /api/embeddings/file/{fileId}:
+ *   get:
+ *     summary: 获取文件的嵌入向量
+ *     description: 根据文件ID获取所有关联的嵌入向量
+ *     tags: [Embeddings]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 文件ID
+ *     responses:
+ *       200:
+ *         description: 嵌入向量列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/file/:fileId', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { fileId } = req.params;
@@ -32,6 +58,32 @@ export const getEmbeddingsRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/embeddings/file/{fileId}:
+ *   delete:
+ *     summary: 删除文件的嵌入向量
+ *     description: 根据文件ID删除所有关联的嵌入向量
+ *     tags: [Embeddings]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 文件ID
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.delete('/file/:fileId', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { fileId } = req.params;
@@ -53,6 +105,32 @@ export const getEmbeddingsRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/embeddings/repo/{repoId}:
+ *   delete:
+ *     summary: 删除仓库的嵌入向量
+ *     description: 根据仓库ID删除所有关联的嵌入向量
+ *     tags: [Embeddings]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: repoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 仓库ID
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.delete('/repo/:repoId', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { repoId } = req.params;
@@ -74,6 +152,34 @@ export const getEmbeddingsRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/embeddings/{id}:
+ *   get:
+ *     summary: 获取嵌入向量
+ *     description: 根据ID获取单个嵌入向量
+ *     tags: [Embeddings]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 嵌入向量ID
+ *     responses:
+ *       200:
+ *         description: 嵌入向量详情
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 嵌入向量不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;
@@ -100,6 +206,52 @@ export const getEmbeddingsRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/embeddings/{id}:
+ *   patch:
+ *     summary: 更新嵌入向量
+ *     description: 更新指定嵌入向量的内容
+ *     tags: [Embeddings]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 嵌入向量ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: 新的内容
+ *               embedding:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 description: 新的嵌入向量
+ *               tokenCount:
+ *                 type: number
+ *                 description: 新的token数量
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       404:
+ *         description: 嵌入向量不存在
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { id } = req.params;

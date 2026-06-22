@@ -43,6 +43,33 @@ const validateSearchRequest = (body: unknown): { valid: boolean; error?: string;
 };
 
 export const getSearchRouter = () => {
+  /**
+ * @swagger
+ * /api/search:
+ *   post:
+ *     summary: 语义搜索
+ *     description: 使用语义嵌入向量进行代码搜索
+ *     tags: [Search]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SearchRequest'
+ *     responses:
+ *       200:
+ *         description: 搜索结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: 请求参数无效
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     const startTime = Date.now();
 
@@ -103,6 +130,43 @@ export const getSearchRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/search/symbol:
+ *   post:
+ *     summary: 符号搜索
+ *     description: 根据名称搜索代码符号（函数、类、变量等）
+ *     tags: [Search]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 description: 搜索关键词
+ *               repoId:
+ *                 type: string
+ *                 description: 仓库ID（可选）
+ *               limit:
+ *                 type: number
+ *                 description: 返回结果数量限制（默认20）
+ *     responses:
+ *       200:
+ *         description: 符号搜索结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: 请求参数无效
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.post('/symbol', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { query, repoId, limit } = req.body as { query?: string; repoId?: string; limit?: number };
@@ -158,6 +222,25 @@ export const getSearchRouter = () => {
     }
   });
 
+  /**
+ * @swagger
+ * /api/search/history:
+ *   get:
+ *     summary: 获取搜索历史
+ *     description: 返回用户的搜索历史记录
+ *     tags: [Search]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: 搜索历史列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       500:
+ *         description: 服务器内部错误
+ */
   router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
     try {
       return res.status(200).json({

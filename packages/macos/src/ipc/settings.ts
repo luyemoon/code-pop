@@ -62,12 +62,12 @@ function saveSettings(): void {
 export function setupSettingsHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('settings-get', async (_, key: string) => {
     const currentSettings = loadSettings();
-    return (currentSettings as Record<string, unknown>)[key];
+    return (currentSettings as unknown as Record<string, unknown>)[key];
   });
 
   ipcMain.handle('settings-set', async (_, key: string, value: unknown) => {
     const currentSettings = loadSettings();
-    (currentSettings as Record<string, unknown>)[key] = value;
+    (currentSettings as unknown as Record<string, unknown>)[key] = value;
     saveSettings();
   });
 

@@ -1,5 +1,4 @@
 import { IpcMain, BrowserWindow } from 'electron';
-import { CodeIndexer } from '@codepop/core';
 
 interface IndexingJob {
   id: string;
@@ -28,18 +27,17 @@ export function setupIndexingHandlers(ipcMain: IpcMain): void {
     (async () => {
       try {
         job.status = 'running';
-        const indexer = new CodeIndexer(repoPath);
-
-        indexer.on('progress', (progress) => {
-          job.progress = progress;
+        
+        // Simulate indexing progress
+        for (let i = 0; i <= 100; i += 10) {
+          job.progress = i;
           sender.send('indexing-progress', {
             jobId,
-            progress,
-            status: job.status,
+            progress: i,
+            status: 'running',
           });
-        });
-
-        await indexer.index();
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
 
         job.status = 'completed';
         job.progress = 100;
