@@ -55,11 +55,11 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 EOF
 
 echo "[3/5] Copying resources..."
-ICON_SRC="$PROJECT_DIR/../macos/release/mac-arm64/CodePop.app/Contents/Resources/icon.icns"
+ICON_SRC="$PROJECT_DIR/Resources/AppIcon.icns"
 if [ -f "$ICON_SRC" ]; then
     cp "$ICON_SRC" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 else
-    echo "Warning: icon.icns not found, app will use default icon"
+    echo "Warning: AppIcon.icns not found, app will use default icon"
 fi
 
 echo "[4/5] Signing app bundle..."
