@@ -1,22 +1,27 @@
+<!--
+CodePop 代码波普 - SEO Keywords
+代码检索, AI代码检索, 向量数据库, pgvector, 语义搜索, Claude Code, Cursor AI, AI Agent, 代码索引, 代码搜索, 代码理解, RAG, 代码RAG, 代码向量化, Code Search, Semantic Code Search, Vector Database, AI Infrastructure
+-->
+
 # Code:Pop — 让代码,真正活着。
 
-> **🤖 AI INFRASTRUCTURE** · **代码专用检索基础设施**  
-> **LOCAL AI CODE MEMORY** · tree-sitter + BAAI/bge-small + PostgreSQL/pgvector  
-> SEMANTIC RECALL · INCREMENTAL INDEX · PRIVACY-FIRST
+> **中文名：代码波普** · **代码,真正活着**
 
 ---
 
 <div align="center">
 
-![Code:Pop Banner](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20modern%20pop-art%20style%20banner%20for%20CodePop%20AI%20code%20search%20tool%2C%20featuring%20bright%20pink%20cyan%20yellow%20colors%2C%20geometric%20shapes%2C%20code%20symbols%20floating%2C%20clean%20minimalist%20design%20with%20gradient%20background%2C%20tech%20startup%20aesthetic&image_size=landscape_16_9)
+![Code:Pop 代码波普 Banner](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20modern%20pop-art%20style%20banner%20for%20CodePop%20AI%20code%20search%20tool%2C%20featuring%20bright%20pink%20cyan%20yellow%20colors%2C%20geometric%20shapes%2C%20code%20symbols%20floating%2C%20clean%20minimalist%20design%20with%20gradient%20background%2C%20tech%20startup%20aesthetic&image_size=landscape_16_9)
 
 </div>
 
 ---
 
-## 🎯 AI 代码检索基础设施 (AI Infrastructure)
+## 🎯 代码波普 (Code:Pop) — AI 代码检索基础设施 (AI Infrastructure)
 
-**Code:Pop** 是面向 **AI Agent** 的代码专用检索 **AI Infra** 项目。通过混合索引、智能检索与上下文压缩，为 Claude Code、Codex、Cursor 等编码 Agent 提供精准的代码上下文，降低幻觉率，提升代码理解深度。
+**代码波普（Code:Pop）** 是面向 **AI Agent** 的代码专用检索 **AI Infra** 项目。通过混合索引、智能检索与上下文压缩，为 Claude Code、Codex、Cursor 等编码 Agent 提供精准的代码上下文，降低幻觉率，提升代码理解深度。
+
+> 💡 **代码波普**：让你的代码库像人一样"记住"每一个函数、每一次变更。AI 提问，代码自己"跳"出来。
 
 ### ✨ 核心优势
 
