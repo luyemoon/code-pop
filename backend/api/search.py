@@ -102,7 +102,7 @@ def search_history(
 @router.post("/benchmark", response_model=BenchmarkResponse)
 def create_benchmark(
     payload: BenchmarkCreate, db: Session = Depends(get_db)
-) -> BenchmarkRun:
+) -> BenchmarkResponse:
     service = BenchmarkService(db)
     return service.run_benchmark(payload)
 
@@ -113,7 +113,7 @@ def list_benchmarks(
     mode: str | None = None,
     limit: int = 100,
     db: Session = Depends(get_db),
-) -> List[BenchmarkRun]:
+) -> List[BenchmarkResponse]:
     service = BenchmarkService(db)
     return service.list_benchmarks(repo_id, mode, limit)
 
