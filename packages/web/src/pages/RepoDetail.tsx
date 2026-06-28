@@ -26,7 +26,7 @@ export const RepoDetail = () => {
   const navigate = useNavigate();
   const { deleteRepo, reindex, isDeleting, isReindexing } = useRepos();
   const { data: repo, isLoading, error } = useRepo(id!);
-  const { isIndexing, progress } = useIndexing(id!);
+  const { isIndexing, progress, stageProgress, currentStageLabel, error: indexingError } = useIndexing(id!);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
@@ -229,26 +229,60 @@ export const RepoDetail = () => {
 
       {/* Indexing Progress */}
       {(isIndexing || repo.status === 'indexing') && progress && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-            索引进度
-          </h3>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1">
-              <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              索引进度
+            </h3>
+            {currentStageLabel && (
+              <span className="text-sm font-medium px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                {currentStageLabel}
+              </span>
+            )}
+          </div>
+
+          {/* Overall progress */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">总进度</span>
+              <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                {progress.percentage}%
+              </span>
+            </div>
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                style={{ width: `${progress.percentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Stage progress */}
+          {stageProgress && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {currentStageLabel}阶段
+                </span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  {stageProgress.current} / {stageProgress.total} ({Math.round(stageProgress.percentage)}%)
+                </span>
+              </div>
+              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                  style={{ width: `${progress.percentage}%` }}
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${stageProgress.percentage}%` }}
                 />
               </div>
             </div>
-            <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
-              {progress.percentage}%
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            正在索引: {progress.current} / {progress.total} 个文件
-          </p>
+          )}
+
+          {indexingError && (
+            <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>{indexingError}</span>
+            </div>
+          )}
         </div>
       )}
 

@@ -31,11 +31,21 @@ logger = logging.getLogger(__name__)
 _index_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="indexer-")
 
 
-def _notify(loop: asyncio.AbstractEventLoop, repo_id: str, status: str, progress: float, error: str | None = None) -> None:
+def _notify(
+    loop: asyncio.AbstractEventLoop,
+    repo_id: str,
+    status: str,
+    progress: float,
+    error: str | None = None,
+    stage: str | None = None,
+    stage_progress: dict | None = None,
+) -> None:
     """Schedule a WebSocket notification on the main event loop from a worker thread."""
     try:
         asyncio.run_coroutine_threadsafe(
-            notifier.send_repo_update(repo_id, status, progress, error),
+            notifier.send_repo_update(
+                repo_id, status, progress, error, stage=stage, stage_progress=stage_progress
+            ),
             loop,
         )
     except Exception as exc:
@@ -125,7 +135,9 @@ def _index_file(
 def _bulk_insert_symbols_and_embeddings(
     db: Session,
     repo_id: UUID,
+    repo_id_str: str,
     file_records: List[Tuple[CodeFile, ParseResult]],
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Embed chunks and bulk insert symbols + embeddings for parsed files."""
     logger.info(
@@ -136,9 +148,9 @@ def _bulk_insert_symbols_and_embeddings(
     if not file_records:
         return
 
-    embedder = Embedder()
+    batch_size = settings.index_batch_size
 
-    # Insert symbols first so we can map names to IDs later.
+    # ---- Stage 2: symbol parsing (30% -> 50%) ----
     symbol_mappings: List[Dict[str, Any]] = []
     for code_file, parsed in file_records:
         for sym in parsed.symbols:
@@ -157,12 +169,45 @@ def _bulk_insert_symbols_and_embeddings(
                 }
             )
 
-    logger.info("Inserting %d symbols", len(symbol_mappings))
-    if symbol_mappings:
-        db.bulk_insert_mappings(Symbol, symbol_mappings)
-        db.flush()
+    total_symbols = len(symbol_mappings)
+    logger.info("Inserting %d symbols", total_symbols)
+    if not symbol_mappings:
+        _notify(
+            loop,
+            repo_id_str,
+            RepoStatus.indexing.value,
+            50.0,
+            stage="symbols",
+            stage_progress={
+                "stage": "symbols",
+                "current": 0,
+                "total": 0,
+                "percentage": 100.0,
+            },
+        )
+    else:
+        for i in range(0, total_symbols, batch_size):
+            batch = symbol_mappings[i : i + batch_size]
+            db.bulk_insert_mappings(Symbol, batch)
+            db.flush()
+            inserted = min(i + batch_size, total_symbols)
+            pct = (inserted / total_symbols * 100.0) if total_symbols else 100.0
+            overall = 30.0 + (inserted / total_symbols * 20.0) if total_symbols else 50.0
+            _notify(
+                loop,
+                repo_id_str,
+                RepoStatus.indexing.value,
+                overall,
+                stage="symbols",
+                stage_progress={
+                    "stage": "symbols",
+                    "current": inserted,
+                    "total": total_symbols,
+                    "percentage": round(pct, 2),
+                },
+            )
 
-    # Prepare embedding records.
+    # ---- Stage 3: vector generation (50% -> 75%) ----
     embedding_mappings: List[Dict[str, Any]] = []
     texts_to_embed: List[str] = []
     meta: List[Tuple[UUID, int, int, int, int]] = []  # (file_id, chunk_index, start_line, end_line, token_count)
@@ -172,10 +217,25 @@ def _bulk_insert_symbols_and_embeddings(
             texts_to_embed.append(chunk.content)
             meta.append((code_file.id, idx, chunk.start_line, chunk.end_line, len(chunk.content.split())))
 
-    logger.info("Encoding %d chunks", len(texts_to_embed))
+    total_chunks = len(texts_to_embed)
+    logger.info("Encoding %d chunks", total_chunks)
     if not texts_to_embed:
+        _notify(
+            loop,
+            repo_id_str,
+            RepoStatus.indexing.value,
+            75.0,
+            stage="embeddings",
+            stage_progress={
+                "stage": "embeddings",
+                "current": 0,
+                "total": 0,
+                "percentage": 100.0,
+            },
+        )
         return
 
+    embedder = Embedder()
     vectors = embedder.encode(texts_to_embed)
     for text_idx, (vector, mapping_meta) in enumerate(zip(vectors, meta)):
         file_id, chunk_index, start_line, end_line, token_count = mapping_meta
@@ -193,17 +253,35 @@ def _bulk_insert_symbols_and_embeddings(
         )
 
     # Batch insert embeddings.
-    batch_size = settings.index_batch_size
-    for i in range(0, len(embedding_mappings), batch_size):
+    total_embeddings = len(embedding_mappings)
+    for i in range(0, total_embeddings, batch_size):
         batch = embedding_mappings[i : i + batch_size]
         db.bulk_insert_mappings(Embedding, batch)
         db.flush()
+        inserted = min(i + batch_size, total_embeddings)
+        pct = (inserted / total_embeddings * 100.0) if total_embeddings else 100.0
+        overall = 50.0 + (inserted / total_embeddings * 25.0) if total_embeddings else 75.0
+        _notify(
+            loop,
+            repo_id_str,
+            RepoStatus.indexing.value,
+            overall,
+            stage="embeddings",
+            stage_progress={
+                "stage": "embeddings",
+                "current": inserted,
+                "total": total_embeddings,
+                "percentage": round(pct, 2),
+            },
+        )
 
 
 def _rebuild_call_graph(
     db: Session,
     repo_id: UUID,
+    repo_id_str: str,
     file_records: List[Tuple[CodeFile, ParseResult]],
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Rebuild call graph edges ONLY for changed files."""
     if not file_records:
@@ -230,6 +308,19 @@ def _rebuild_call_graph(
     symbol_ids_to_update = {s.id for s in symbols_to_update}
 
     if not symbol_ids_to_update:
+        _notify(
+            loop,
+            repo_id_str,
+            RepoStatus.indexing.value,
+            100.0,
+            stage="call_graph",
+            stage_progress={
+                "stage": "call_graph",
+                "current": 0,
+                "total": 0,
+                "percentage": 100.0,
+            },
+        )
         return
 
     # 3. Delete ONLY edges where source or target is in the affected set.
@@ -270,9 +361,40 @@ def _rebuild_call_graph(
 
     if edges:
         batch_size = settings.index_batch_size
-        for i in range(0, len(edges), batch_size):
+        total_edges = len(edges)
+        for i in range(0, total_edges, batch_size):
             db.bulk_insert_mappings(CallGraphEdge, edges[i : i + batch_size])
-        db.flush()
+            db.flush()
+            inserted = min(i + batch_size, total_edges)
+            pct = (inserted / total_edges * 100.0) if total_edges else 100.0
+            overall = 75.0 + (inserted / total_edges * 25.0) if total_edges else 100.0
+            _notify(
+                loop,
+                repo_id_str,
+                RepoStatus.indexing.value,
+                overall,
+                stage="call_graph",
+                stage_progress={
+                    "stage": "call_graph",
+                    "current": inserted,
+                    "total": total_edges,
+                    "percentage": round(pct, 2),
+                },
+            )
+    else:
+        _notify(
+            loop,
+            repo_id_str,
+            RepoStatus.indexing.value,
+            100.0,
+            stage="call_graph",
+            stage_progress={
+                "stage": "call_graph",
+                "current": 0,
+                "total": 0,
+                "percentage": 100.0,
+            },
+        )
 
 
 def _sync_index_repo(repo_id: UUID, loop: asyncio.AbstractEventLoop) -> None:
@@ -313,14 +435,28 @@ def _sync_index_repo(repo_id: UUID, loop: asyncio.AbstractEventLoop) -> None:
 
             processed += 1
             if processed % 10 == 0 or processed == total:
-                progress = (processed / total * 100.0) if total else 100.0
-                _notify(loop, repo_id_str, RepoStatus.indexing.value, progress)
+                scan_pct = (processed / total * 100.0) if total else 100.0
+                # File scanning is the first stage and accounts for 0% -> 30%.
+                overall = (processed / total * 30.0) if total else 30.0
+                _notify(
+                    loop,
+                    repo_id_str,
+                    RepoStatus.indexing.value,
+                    overall,
+                    stage="scan",
+                    stage_progress={
+                        "stage": "scan",
+                        "current": processed,
+                        "total": total,
+                        "percentage": round(scan_pct, 2),
+                    },
+                )
 
         # Keep file_records and their children in a single transaction so an
         # interrupted run cannot leave orphaned code_files rows.
         print(f"[INDEXER] file_records={len(file_records)} for repo {repo_id}", flush=True)
-        _bulk_insert_symbols_and_embeddings(db, repo_id, file_records)
-        _rebuild_call_graph(db, repo_id, file_records)
+        _bulk_insert_symbols_and_embeddings(db, repo_id, repo_id_str, file_records, loop)
+        _rebuild_call_graph(db, repo_id, repo_id_str, file_records, loop)
         db.commit()
 
         repo.status = RepoStatus.indexed.value

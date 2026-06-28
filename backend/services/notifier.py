@@ -44,16 +44,26 @@ class WSNotifier:
         for conn in disconnected:
             self.disconnect(conn)
 
-    async def send_repo_update(self, repo_id: str, status: str, progress: float, error: str | None = None) -> None:
-        await self.broadcast(
-            {
-                "type": "repo_update",
-                "repo_id": repo_id,
-                "status": status,
-                "progress": round(progress, 2),
-                "error": error,
-            }
-        )
+    async def send_repo_update(
+        self,
+        repo_id: str,
+        status: str,
+        progress: float,
+        error: str | None = None,
+        stage: str | None = None,
+        stage_progress: dict | None = None,
+    ) -> None:
+        payload: dict = {
+            "type": "repo_update",
+            "repoId": repo_id,
+            "status": status,
+            "progress": round(progress, 2),
+            "stage": stage,
+            "stage_progress": stage_progress,
+            "error": error,
+        }
+        # Keep the wire format compact by omitting empty optional fields.
+        await self.broadcast({k: v for k, v in payload.items() if v is not None})
 
 
 notifier = WSNotifier()
