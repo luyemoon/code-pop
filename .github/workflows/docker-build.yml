@@ -48,6 +48,7 @@ jobs:
         with:
           context: ./backend
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -86,6 +87,7 @@ jobs:
         with:
           context: ./packages/web
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -109,8 +111,7 @@ jobs:
 
       - name: Mirror pgvector image to GHCR
         run: |
-          docker pull pgvector/pgvector:pg16
-          docker tag pgvector/pgvector:pg16 ${{ env.POSTGRES_IMAGE }}:latest
-          docker tag pgvector/pgvector:pg16 ${{ env.POSTGRES_IMAGE }}:pg16
-          docker push ${{ env.POSTGRES_IMAGE }}:latest
-          docker push ${{ env.POSTGRES_IMAGE }}:pg16
+          docker buildx imagetools create \
+            --tag ${{ env.POSTGRES_IMAGE }}:latest \
+            --tag ${{ env.POSTGRES_IMAGE }}:pg16 \
+            pgvector/pgvector:pg16
